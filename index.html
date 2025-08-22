@@ -1,462 +1,897 @@
 <!DOCTYPE html>
 <html lang="mr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>भारतीय संविधान AI चॅट</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-  <style>
-    :root{
-      --primary:#0c3b2e; /* deep teal close to ChatGPT brand */
-      --secondary:#14a37f;
-      --bg:#f6f7f9;
-      --text:#1f2937;
-      --bot:#eef8f4;
-      --user:#e9f2ff;
-      --ring:rgba(20,163,127,.25);
-      --shadow:0 10px 30px rgba(0,0,0,.12);
-      --transition:.25s ease;
-    }
-    *{box-sizing:border-box;margin:0;padding:0}
-    html,body{height:100%}
-    body{
-      font-family:'Mukta',system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
-      color:var(--text);
-      background: var(--bg);
-      overflow: hidden;
-    }
-
-    /* --- ChatGPT‑style animated background (blurred blobs + subtle grid) --- */
-    .bg-wrap{position:fixed;inset:0;z-index:-1;overflow:hidden}
-    .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,23,42,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(15,23,42,.06) 1px,transparent 1px);background-size:28px 28px;opacity:.5}
-    .blob{position:absolute;filter:blur(70px);opacity:.55;mix-blend-mode:soft-light;animation:float 18s ease-in-out infinite alternate}
-    .blob.one{width:520px;height:520px;background:#14a37f55;left:-80px;top:-60px}
-    .blob.two{width:520px;height:520px;background:#4f46e555; right:-120px;bottom:-80px;animation-duration:22s}
-    .blob.three{width:420px;height:420px;background:#f59e0b55; left:50%;top:60%;transform:translate(-50%,-50%);animation-duration:26s}
-    @keyframes float{to{transform:translate(20px, -30px) scale(1.05)}}
-
-    /* --- App shell --- */
-    .app{display:flex;flex-direction:column;height:100dvh;max-width:1100px;margin:0 auto}
-    header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
-    .brand{display:flex;align-items:center;gap:10px}
-    .brand i{font-size:28px;color:var(--secondary)}
-    .brand h1{font-size:22px;color:var(--primary)}
-    .actions{display:flex;align-items:center;gap:8px}
-    .btn{border:1px solid rgba(0,0,0,.08);background:#fff;border-radius:999px;padding:8px 12px;cursor:pointer;transition:transform var(--transition),box-shadow var(--transition),background var(--transition);display:flex;align-items:center;gap:8px}
-    .btn:hover{box-shadow:var(--shadow)}
-    .btn.primary{background:var(--primary);color:#fff;border-color:transparent}
-
-    .shell{display:grid;grid-template-columns:300px 1fr;gap:14px;padding:0 18px 18px;min-height:0}
-    .panel{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;box-shadow:var(--shadow);min-height:0}
-
-    /* Sidebar */
-    .sidebar{display:flex;flex-direction:column;overflow:hidden}
-    .side-top{padding:14px;border-bottom:1px solid rgba(0,0,0,.08)}
-    .side-top h3{color:var(--primary);font-size:18px;margin-bottom:6px}
-    .search{position:relative;margin-top:6px}
-    .search input{width:100%;padding:10px 36px 10px 12px;border-radius:12px;border:1px solid rgba(0,0,0,.15);outline:none}
-    .search i{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#6b7280}
-    .side-scroll{overflow:auto;padding:10px 12px}
-    .group{margin-bottom:12px}
-    .group h4{font-size:14px;color:#065f46;margin:6px 0}
-    .qbtn{display:block;width:100%;text-align:left;padding:10px 12px;margin:6px 0;border:1px solid rgba(0,0,0,.08);border-radius:12px;background:#f9fafb;cursor:pointer}
-    .qbtn:hover{border-color:var(--secondary)}
-
-    /* Chat */
-    .chat{display:flex;flex-direction:column;height:calc(100dvh - 90px);min-height:0}
-    .messages{flex:1;overflow:auto;padding:18px;background:linear-gradient(#ffffffcc,#ffffffcc), radial-gradient(1000px 400px at 20% -20%, rgba(20,163,127,.06), transparent), radial-gradient(1000px 400px at 120% 120%, rgba(79,70,229,.06), transparent)}
-    .msg{max-width:78%;padding:12px 14px;margin:10px 0;border-radius:14px;line-height:1.6;box-shadow:var(--shadow)}
-    .bot{background:var(--bot);border-top-left-radius:4px}
-    .user{background:var(--user);border-top-right-radius:4px;margin-left:auto}
-    .article{background:#fff;border-left:4px solid var(--secondary);padding:12px;border-radius:12px}
-    .article .title{font-weight:700;color:var(--primary)}
-    .article .part{margin-top:6px;font-size:14px;color:#065f46}
-
-    .composer{display:flex;gap:10px;padding:12px;border-top:1px solid rgba(0,0,0,.08);background:#fff;border-bottom-left-radius:16px;border-bottom-right-radius:16px}
-    .composer input{flex:1;padding:12px 14px;border-radius:12px;border:1px solid rgba(0,0,0,.15);outline:none}
-    .send{width:48px;height:48px;border-radius:999px;background:var(--secondary);color:#fff;border:none;cursor:pointer}
-
-    /* Footer */
-    footer{padding:10px 18px;color:#6b7280;font-size:14px}
-
-    /* Dark mode */
-    .dark body{background:#0b1416}
-    .dark .panel,.dark .messages,.dark header,.dark .composer{background:#0e191a;color:#e5e7eb;border-color:#0f2627}
-
-    /* small screens */
-    @media (max-width: 960px){
-      .shell{grid-template-columns:1fr}
-      .sidebar{order:2}
-      .chat{order:1;height:calc(100dvh - 130px)}
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>भारतीय संविधान AI चॅट</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Mukta', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        :root {
+            --primary-color: #1a2a6c;
+            --secondary-color: #ff9933;
+            --accent-color: #138808;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --user-msg-color: #e3f2fd;
+            --bot-msg-color: #f1f8e9;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            transition: var(--transition);
+        }
+        
+        body.dark-mode {
+            background: linear-gradient(135deg, #0d1b45, #8a1c1c, #c99522);
+            color: #f8f9fa;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: var(--transition);
+        }
+        
+        body.dark-mode .container {
+            background: rgba(33, 37, 41, 0.95);
+            color: #f8f9fa;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #ff9933, #ffffff, #138808);
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            border-bottom: 2px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        body.dark-mode header {
+            background: linear-gradient(135deg, #cc7a29, #666, #0d6308);
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo-icon {
+            font-size: 36px;
+            color: var(--primary-color);
+            margin-right: 10px;
+        }
+        
+        body.dark-mode .logo-icon {
+            color: #ffcc00;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        
+        body.dark-mode h1 {
+            color: #ffcc00;
+        }
+        
+        .theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            color: var(--primary-color);
+            transition: var(--transition);
+        }
+        
+        body.dark-mode .theme-toggle {
+            color: #ffcc00;
+        }
+        
+        .subtitle {
+            color: #555;
+            font-size: 16px;
+        }
+        
+        body.dark-mode .subtitle {
+            color: #ddd;
+        }
+        
+        .chat-container {
+            display: flex;
+            height: 500px;
+        }
+        
+        .questions-sidebar {
+            width: 30%;
+            background: #f5f5f5;
+            padding: 15px;
+            overflow-y: auto;
+            border-right: 1px solid #ddd;
+            transition: var(--transition);
+        }
+        
+        body.dark-mode .questions-sidebar {
+            background: #2d3748;
+            border-right: 1px solid #555;
+        }
+        
+        .questions-sidebar h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--secondary-color);
+        }
+        
+        body.dark-mode .questions-sidebar h3 {
+            color: #ffcc00;
+        }
+        
+        .question-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 14px;
+            color: #444;
+        }
+        
+        .question-btn:hover {
+            background: #e9f5ff;
+            border-color: var(--primary-color);
+            transform: translateX(5px);
+        }
+        
+        body.dark-mode .question-btn {
+            background: #374151;
+            color: #ddd;
+            border-color: #555;
+        }
+        
+        body.dark-mode .question-btn:hover {
+            background: #4b5563;
+            border-color: #ffcc00;
+        }
+        
+        .chat-main {
+            width: 70%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="rgba(26, 42, 108, 0.05)" x="0" y="0" width="100" height="100"/></svg>');
+            transition: var(--transition);
+        }
+        
+        body.dark-mode .chat-messages {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="rgba(255, 204, 0, 0.05)" x="0" y="0" width="100" height="100"/></svg>');
+        }
+        
+        .message {
+            max-width: 80%;
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            line-height: 1.5;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .user-message {
+            background: var(--user-msg-color);
+            margin-left: auto;
+            border-bottom-right-radius: 0;
+            color: var(--primary-color);
+        }
+        
+        body.dark-mode .user-message {
+            background: #2c5282;
+            color: #e3f2fd;
+        }
+        
+        .bot-message {
+            background: var(--bot-msg-color);
+            margin-right: auto;
+            border-bottom-left-radius: 0;
+            color: #33691e;
+        }
+        
+        body.dark-mode .bot-message {
+            background: #2f855a;
+            color: #f1f8e9;
+        }
+        
+        .typing-indicator {
+            display: flex;
+            padding: 12px 16px;
+            background: var(--bot-msg-color);
+            border-radius: 10px;
+            margin-right: auto;
+            margin-bottom: 15px;
+            max-width: 80px;
+            border-bottom-left-radius: 0;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        body.dark-mode .typing-indicator {
+            background: #2f855a;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #888;
+            border-radius: 50%;
+            margin: 0 3px;
+            animation: typingAnimation 1.4s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typingAnimation {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-5px);
+            }
+        }
+        
+        .chat-input {
+            display: flex;
+            padding: 15px;
+            background: #f5f5f5;
+            border-top: 1px solid #ddd;
+            transition: var(--transition);
+        }
+        
+        body.dark-mode .chat-input {
+            background: #2d3748;
+            border-top: 1px solid #555;
+        }
+        
+        #user-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ccc;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: var(--transition);
+        }
+        
+        body.dark-mode #user-input {
+            background: #374151;
+            color: #fff;
+            border-color: #555;
+        }
+        
+        #send-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-left: 10px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #send-btn:hover {
+            background: var(--secondary-color);
+            transform: rotate(15deg);
+        }
+        
+        .chat-actions {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 15px;
+            background: #f5f5f5;
+            border-top: 1px solid #ddd;
+        }
+        
+        body.dark-mode .chat-actions {
+            background: #2d3748;
+            border-top: 1px solid #555;
+        }
+        
+        .action-btn {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            transition: var(--transition);
+        }
+        
+        .action-btn i {
+            margin-right: 5px;
+        }
+        
+        .action-btn:hover {
+            color: var(--primary-color);
+        }
+        
+        body.dark-mode .action-btn {
+            color: #aaa;
+        }
+        
+        body.dark-mode .action-btn:hover {
+            color: #ffcc00;
+        }
+        
+        .footer {
+            background: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+        
+        body.dark-mode .footer {
+            background: #0d1b45;
+        }
+        
+        @media (max-width: 768px) {
+            .chat-container {
+                flex-direction: column;
+                height: 600px;
+            }
+            
+            .questions-sidebar, .chat-main {
+                width: 100%;
+            }
+            
+            .questions-sidebar {
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+                max-height: 150px;
+            }
+            
+            h1 {
+                font-size: 22px;
+            }
+            
+            .subtitle {
+                font-size: 14px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                border-radius: 10px;
+            }
+            
+            header {
+                padding: 15px 10px;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+            
+            .logo-icon {
+                font-size: 28px;
+            }
+            
+            .message {
+                max-width: 90%;
+                font-size: 14px;
+            }
+        }
+        
+        .marathi-text {
+            font-family: 'Mukta', sans-serif;
+            line-height: 1.6;
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        body.dark-mode ::-webkit-scrollbar-track {
+            background: #374151;
+        }
+        
+        body.dark-mode ::-webkit-scrollbar-thumb {
+            background: #6b7280;
+        }
+        
+        body.dark-mode ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+        
+        .article-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        body.dark-mode .article-info {
+            background: rgba(55, 65, 81, 0.7);
+            border-left: 4px solid #ffcc00;
+        }
+        
+        .article-title {
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        body.dark-mode .article-title {
+            color: #ffcc00;
+        }
+        
+        .language-toggle {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 5px;
+            transition: var(--transition);
+        }
+        
+        .language-toggle:hover {
+            background: var(--secondary-color);
+        }
+        
+        .part-info {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            border-left: 4px solid var(--accent-color);
+        }
+        
+        body.dark-mode .part-info {
+            background: rgba(55, 65, 81, 0.9);
+        }
+        
+        .part-title {
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- ChatGPT‑like background -->
-  <div class="bg-wrap" aria-hidden="true">
-    <div class="grid"></div>
-    <div class="blob one"></div>
-    <div class="blob two"></div>
-    <div class="blob three"></div>
-  </div>
-
-  <div class="app">
-    <header>
-      <div class="brand">
-        <i class="fa-solid fa-scale-balanced"></i>
-        <h1>भारतीय संविधान AI चॅट</h1>
-      </div>
-      <div class="actions">
-        <button class="btn" id="historyBtn"><i class="fa-regular fa-book-open"></i> संविधानाचा इतिहास</button>
-        <button class="btn primary" id="clearBtn"><i class="fa-regular fa-broom"></i> चॅट साफ</button>
-      </div>
-    </header>
-
-    <main class="shell">
-      <!-- Sidebar -->
-      <aside class="panel sidebar">
-        <div class="side-top">
-          <h3>जलद शोध</h3>
-          <div class="search">
-            <input id="quickSearch" placeholder="उदा. कलम 14 / Article 21A" />
-            <i class="fa-regular fa-magnifying-glass"></i>
-          </div>
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <div class="logo">
+                    <i class="fas fa-scale-balanced logo-icon"></i>
+                    <h1 class="marathi-text">भारतीय संविधान AI चॅट</h1>
+                </div>
+                <button class="theme-toggle" id="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+            <p class="subtitle marathi-text">भारतीय संविधानाविषयी मराठीत माहिती मिळवा</p>
+        </header>
+        
+        <div class="chat-container">
+            <div class="questions-sidebar">
+                <h3 class="marathi-text">सामान्य प्रश्न</h3>
+                <button class="question-btn marathi-text" data-question="भारतीय संविधान कोणी लिहिले?">भारतीय संविधान कोणी लिहिले?</button>
+                <button class="question-btn marathi-text" data-question="भारतीय संविधान कोणत्या वर्षी अस्तित्वात आले?">भारतीय संविधान कोणत्या वर्षी अस्तित्वात आले?</button>
+                <button class="question-btn marathi-text" data-question="संविधानात किती कलमे आहेत?">संविधानात किती कलमे आहेत?</button>
+                <button class="question-btn marathi-text" data-question="मूलभूत हक्क कोणते?">मूलभूत हक्क कोणते?</button>
+                <button class="question-btn marathi-text" data-question="मूलभूत कर्तव्ये कोणती?">मूलभूत कर्तव्ये कोणती?</button>
+                
+                <h3 class="marathi-text" style="margin-top: 20px;">कलमे शोधा</h3>
+                <button class="question-btn marathi-text" data-question="कलम १">कलम १: भारताचे नाव आणि प्रदेश</button>
+                <button class="question-btn marathi-text" data-question="कलम १४">कलम १४: समतेचा हक्क</button>
+                <button class="question-btn marathi-text" data-question="कलम १९">कलम १९: बोलण्याचा आणि अभिव्यक्तीचा हक्क</button>
+                <button class="question-btn marathi-text" data-question="कलम २१">कलम २१: जीवन आणि वैयक्तिक स्वातंत्र्याचा हक्क</button>
+                <button class="question-btn marathi-text" data-question="कलम ३२">कलम ३२: घटनात्मक उपाय</button>
+                <button class="question-btn marathi-text" data-question="कलम ३६८">कलम ३६८: घटनादुरुस्ती</button>
+                <button class="question-btn marathi-text" data-question="कलम ३७०">कलम ३७०: जम्मू-काश्मीरसाठी विशेष तरतुदी</button>
+                <button class="question-btn marathi-text" data-question="कलम ३९५">कलम ३९५: भारत सरकार कायदा (१९३५) रद्द</button>
+            </div>
+            
+            <div class="chat-main">
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message bot-message marathi-text">
+                        <p>नमस्कार! मी भारतीय संविधानासाठी AI सहाय्यक आहे. तुम्हाला भारतीय संविधानाविषयी काय माहिती हवी आहे?</p>
+                        <p>तुम्ही कोणत्याही कलमाविषयी विचारू शकता (कलम १ ते ४४८). उदाहरणार्थ: "कलम १५ म्हणजे काय?"</p>
+                    </div>
+                </div>
+                
+                <div class="chat-input">
+                    <input type="text" id="user-input" placeholder="तुमचा प्रश्न इथे टाइप करा (उदा. कलम १५)" class="marathi-text">
+                    <button id="send-btn"><i class="fas fa-paper-plane"></i></button>
+                </div>
+                
+                <div class="chat-actions">
+                    <button class="action-btn marathi-text" id="clear-chat">
+                        <i class="fas fa-trash"></i> चॅट साफ करा
+                    </button>
+                    <button class="action-btn marathi-text" id="suggest-questions">
+                        <i class="fas fa-lightbulb"></i> प्रश्न सुचवा
+                    </button>
+                </div>
+            </div>
         </div>
-        <div class="side-scroll" id="sideList">
-          <div class="group">
-            <h4>सामान्य प्रश्न</h4>
-            <button class="qbtn" data-q="भारतीय संविधान कोणी लिहिले?">भारतीय संविधान कोणी लिहिले?</button>
-            <button class="qbtn" data-q="भारतीय संविधान कोणत्या वर्षी अस्तित्वात आले?">संविधान कधी लागू झाले?</button>
-            <button class="qbtn" data-q="मूलभूत हक्क कोणते?">मूलभूत हक्क कोणते?</button>
-            <button class="qbtn" data-q="मूलभूत कर्तव्ये कोणती?">मूलभूत कर्तव्ये कोणती?</button>
-          </div>
-          <div class="group">
-            <h4>प्रमुख कलमे</h4>
-            <div id="featured"></div>
-          </div>
+        
+        <div class="footer marathi-text">
+            <p>© 2023 भारतीय संविधान AI चॅट | ही एक Demo प्रणाली आहे</p>
         </div>
-      </aside>
+    </div>
 
-      <!-- Chat area -->
-      <section class="panel chat">
-        <div class="messages" id="messages"></div>
-        <div class="composer">
-          <input id="input" class="marathi" placeholder="तुमचा प्रश्न लिहा (उदा. कलम 19, Article 32, प्रस्तावना)" />
-          <button class="send" id="send"><i class="fa-solid fa-paper-plane"></i></button>
-        </div>
-      </section>
-    </main>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chat-messages');
+            const userInput = document.getElementById('user-input');
+            const sendBtn = document.getElementById('send-btn');
+            const themeToggle = document.getElementById('theme-toggle');
+            const clearChatBtn = document.getElementById('clear-chat');
+            const suggestQuestionsBtn = document.getElementById('suggest-questions');
+            const body = document.body;
+            
+            // Check for saved theme preference
+            if (localStorage.getItem('darkMode') === 'enabled') {
+                body.classList.add('dark-mode');
+                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+            }
+            
+            // Constitution parts information
+            const partsInfo = [
+                {part:"भाग I: संघ व प्रदेश", from:1, to:4},
+                {part:"भाग II: नागरिकत्व", from:5, to:11},
+                {part:"भाग III: मूलभूत हक्क", from:12, to:35},
+                {part:"भाग IV: राज्य धोरणाची मार्गदर्शक तत्त्वे", from:36, to:51},
+                {part:"भाग IVA: मूलभूत कर्तव्ये", from:51, to:51},
+                {part:"भाग V: संघ", from:52, to:151},
+                {part:"भाग VI: राज्ये", from:152, to:237},
+                {part:"भाग VII: (रद्द)", from:238, to:238},
+                {part:"भाग VIII: केंद्रशासित प्रदेश", from:239, to:242},
+                {part:"भाग IX: पंचायती", from:243, to:243},
+                {part:"भाग IXA: नगरपालिका", from:243, to:243},
+                {part:"भाग IXB: सहकारी संस्था", from:243, to:243},
+                {part:"भाग X: अनुसूचित/आदिवासी क्षेत्र", from:244, to:244},
+                {part:"भाग XI: संघ-राज्य संबंध", from:245, to:263},
+                {part:"भाग XII: वित्त, मालमत्ता, करार व दावे", from:264, to:300},
+                {part:"भाग XIII: व्यापार व वाणिज्य", from:301, to:307},
+                {part:"भाग XIV: सेवासंबंधी", from:308, to:323},
+                {part:"भाग XIVA: न्यायाधिकरण", from:323, to:323},
+                {part:"भाग XV: निवडणुका", from:324, to:329},
+                {part:"भाग XVI: विशेष तरतुदी", from:330, to:342},
+                {part:"भाग XVII: अधिकृत भाषा", from:343, to:351},
+                {part:"भाग XVIII: आणीबाणी तरतुदी", from:352, to:360},
+                {part:"भाग XIX: विविध", from:361, to:367},
+                {part:"भाग XX: घटनादुरुस्ती", from:368, to:368},
+                {part:"भाग XXI: तात्पुरत्या/संक्रमणकालीन/विशेष", from:369, to:392},
+                {part:"भाग XXII: लघुनाम, प्रारंभ व रद्द", from:393, to:395},
+                {part:"भाग XXII (विस्तारित): समारोप", from:396, to:448}
+            ];
+            
+            // Complete articles database
+            const articles = {
+                1:{t:"कलम १: भारताचे नाव व प्रदेश", m:"भारत म्हणजे 'इंडिया, दॅट इज भारत'— राज्यांचा संघ. भारताच्या प्रदेशात राज्ये, केंद्रशासित प्रदेश आणि पुढे प्राप्त होणारे प्रदेश समाविष्ट.", p:"भाग I"},
+                2:{t:"कलम २: नवीन राज्यांचा प्रवेश/स्थापना", m:"संसद कायद्याने नवीन राज्यांना संघात प्रवेश देऊ शकते किंवा नवे राज्य स्थापन करू शकते.", p:"भाग I"},
+                3:{t:"कलम ३: राज्यांची पुनर्रचना", m:"संसद नवे राज्य तयार करणे, क्षेत्र वाढविणे/कपात करणे, सीमा व नावे बदलणे करू शकते.", p:"भाग I"},
+                4:{t:"कलम ४: अनुसूची दुरुस्त्या", m:"कलम २/३ अंतर्गत कायद्यांमुळे प्रथम व चतुर्थ अनुसूची दुरुस्त करता येतात.", p:"भाग I"},
 
-    <footer>
-      © 2025 भारतीय संविधान AI चॅट • Demo शैक्षणिक उद्देशासाठी
-    </footer>
-  </div>
+                5:{t:"कलम ५: प्रारंभीचे नागरिकत्व", m:"संविधान लागू होताना भारतात Domicile असलेले व भारतात जन्मलेले/राहणारे व्यक्ती नागरिक.", p:"भाग II"},
+                6:{t:"कलम ६: पाकिस्तानातून स्थलांतर", m:"पाकिस्तानातून आलेल्या काही व्यक्तींना अटींसह नागरिकत्व.", p:"भाग II"},
+                7:{t:"कलम ७: पाकिस्तानात गेलेल्यांचे प्रकरण", m:"विशेष तरतुदी.", p:"भाग II"},
+                8:{t:"कलम ८: परदेशस्थ भारतीय", m:"भारताबाहेर राहणाऱ्या काही व्यक्तींचे नागरिकत्व.", p:"भाग II"},
+                9:{t:"कलम ९: परकीय नागरिकत्व स्वीकारल्यास", m:"भारतीय नागरिकत्व संपुष्टात.", p:"भाग II"},
+                10:{t:"कलम १०: नागरिकत्वाची सातत्यता", m:"कायद्यानुसार चालू राहते.", p:"भाग II"},
+                11:{t:"कलम ११: संसदेला अधिकार", m:"नागरिकत्वाबाबत कायदे करण्याचा.", p:"भाग II"},
 
-  <script>
-  // ------------------------------
-  // Data: Q&A + Articles catalog
-  // ------------------------------
-  const qaPairs = {
-    "भारतीय संविधान कोणी लिहिले?": "भारतीय संविधानाचा मसुदा डॉ. बाबासाहेब आंबेडकर यांच्या अध्यक्षतेखालील मसुदा समितीने तयार केला. संविधान सभा (१९४६) ने चर्चेनंतर २ वर्षे ११ महिने १८ दिवसात तो स्वीकारला.",
-    "भारतीय संविधान कोणत्या वर्षी अस्तित्वात आले?": "संविधान २६ नोव्हेंबर १९४९ रोजी स्वीकारले गेले आणि २६ जानेवारी १९५० रोजी लागू झाले. म्हणून २६ जानेवारी हा प्रजासत्ताक दिन आहे.",
-    "मूलभूत हक्क कोणते?": "भाग III अंतर्गत ६ प्रमुख हक्क: (1) समतेचा, (2) स्वातंत्र्याचा, (3) शोषणाविरुद्ध, (4) धर्मस्वातंत्र्याचा, (5) सांस्कृतिक व शैक्षणिक, (6) घटनात्मक उपाय.",
-    "मूलभूत कर्तव्ये कोणती?": "४२व्या दुरुस्तीद्वारे भाग IVA (कलम ५१क) अंतर्गत ११ कर्तव्ये जोडली गेली; राष्ट्रध्वजाचा आदर, संविधानाचे पालन, पर्यावरण संरक्षण, वैज्ञानिक मनोवृत्ती इत्यादी."
-  };
+                12:{t:"कलम १२: 'राज्य' ची व्याख्या", m:"भाग III साठी राज्यात केंद्र/राज्य सरकार, संसद/विधानमंडळ, स्थानिक/इतर अधिकारांचा समावेश.", p:"भाग III"},
+                13:{t:"कलम १३: हक्कांविरुद्ध कायदे शून्य", m:"मूलभूत हक्कांशी विसंगत कायदे शून्य ठरतात.", p:"भाग III"},
+                14:{t:"कलम १४: कायद्यापुढे समानता", m:"कायद्यासमोर समानता व कायद्यांचे समान संरक्षण.", p:"भाग III"},
+                15:{t:"कलम १५: भेदभाव निषिद्ध", m:"धर्म, वंश, जात, लिंग, जन्मस्थानामुळे भेदभाव नाही.", p:"भाग III"},
+                16:{t:"कलम १६: रोजगारात समान संधी", m:"सार्वजनिक सेवेत समान संधी.", p:"भाग III"},
+                17:{t:"कलम १७: अस्पृश्यता निर्मूलन", m:"अस्पृश्यता व तिचा कोणताही प्रकार गुन्हा.", p:"भाग III"},
+                18:{t:"कलम १८: पदव्या रद्द", m:"लष्करी/शैक्षणिक वगळता कोणतीही पदवी नाही; परकीय पदव्या स्वीकारणे निषिद्ध.", p:"भाग III"},
+                19:{t:"कलम १९: स्वातंत्र्याचे हक्क", m:"अभिव्यक्ती, सभा, संघटना, मुक्त हालचाल, निवास, व्यवसाय.", p:"भाग III"},
+                20:{t:"कलम २०: फौजदारी संरक्षण", m:"पूर्वलक्ष्यी दंड नाही, दुहेरी शिक्षा नाही, स्वतःविरुद्ध साक्ष नाही.", p:"भाग III"},
+                21:{t:"कलम २१: जीवन व वैयक्तिक स्वातंत्र्य", m:"कायद्याने स्थापित प्रक्रियेशिवाय वंचित करता येणार नाही.", p:"भाग III"},
+                "21A":{t:"कलम २१क: शिक्षणाचा हक्क", m:"६-१४ वयोगटातील मुलांसाठी मोफत व सक्तीचे शिक्षण (राज्य कायद्याद्वारे).", p:"भाग III"},
+                22:{t:"कलम २२: अटक व अटकेतील संरक्षण", m:"अटक/कैदेसंबंधी हमी.", p:"भाग III"},
+                23:{t:"कलम २३: मानवी तस्करी/बेगार निषिद्ध", m:"शोषणाविरुद्ध संरक्षण.", p:"भाग III"},
+                24:{t:"कलम २४: बालमजुरी निषिद्ध", m:"कारखाने/धोकादायक व्यवसायात बालकामगार नाही.", p:"भाग III"},
+                25:{t:"कलम २५: धर्मस्वातंत्र्य", m:"मनःपूर्वक धर्म आचरण/प्रसाराचे स्वातंत्र्य.", p:"भाग III"},
+                26:{t:"कलम २६: धार्मिक व्यवहारांचे अधिकार", m:"धार्मिक संस्था स्थापन/व्यवस्थापन.", p:"भाग III"},
+                27:{t:"कलम २७: करमुक्ती (धर्मप्रचारासाठी)", m:"विशिष्ट कर लादू नये.", p:"भाग III"},
+                28:{t:"कलम २८: धार्मिक शिक्षण", m:"काही शासकीय शिक्षणसंस्थांत धार्मिक अध्यापन निषिद्ध.", p:"भाग III"},
+                29:{t:"कलम २९: सांस्कृतिक/भाषिक समूहांचे संरक्षण", m:"अल्पसंख्याकांच्या हितांचे रक्षण.", p:"भाग III"},
+                30:{t:"कलम ३०: अल्पसंख्याक शैक्षणिक संस्थांचे हक्क", m:"स्थापना व व्यवस्थापन हक्क.", p:"भाग III"},
+                32:{t:"कलम ३२: घटनात्मक उपाय", m:"हक्कभंग झाल्यास सर्वोच्च न्यायालयाकडे रिट.", p:"भाग III"},
 
-  // Key articles with descriptions (curated). Others will be auto‑generated with correct Part mapping.
-  const detailedArticles = {
-    1:{t:"कलम १: भारताचे नाव व प्रदेश", m:"भारत म्हणजे ‘इंडिया, दॅट इज भारत’— राज्यांचा संघ. भारताच्या प्रदेशात राज्ये, केंद्रशासित प्रदेश आणि पुढे प्राप्त होणारे प्रदेश समाविष्ट." , p:"भाग I"},
-    2:{t:"कलम २: नवीन राज्यांचा प्रवेश/स्थापना", m:"संसद कायद्याने नवीन राज्यांना संघात प्रवेश देऊ शकते किंवा नवे राज्य स्थापन करू शकते.", p:"भाग I"},
-    3:{t:"कलम ३: राज्यांची पुनर्रचना", m:"संसद नवे राज्य तयार करणे, क्षेत्र वाढविणे/कपात करणे, सीमा व नावे बदलणे करू शकते.", p:"भाग I"},
-    4:{t:"कलम ४: अनुसूची दुरुस्त्या", m:"कलम २/३ अंतर्गत कायद्यांमुळे प्रथम व चतुर्थ अनुसूची दुरुस्त करता येतात.", p:"भाग I"},
-
-    5:{t:"कलम ५: प्रारंभीचे नागरिकत्व", m:"संविधान लागू होताना भारतात Domicile असलेले व भारतात जन्मलेले/राहणारे व्यक्ती नागरिक.", p:"भाग II"},
-    6:{t:"कलम ६: पाकिस्तानातून स्थलांतर", m:"पाकिस्तानातून आलेल्या काही व्यक्तींना अटींसह नागरिकत्व.", p:"भाग II"},
-    7:{t:"कलम ७: पाकिस्तानात गेलेल्यांचे प्रकरण", m:"विशेष तरतुदी.", p:"भाग II"},
-    8:{t:"कलम ८: परदेशस्थ भारतीय", m:"भारताबाहेर राहणाऱ्या काही व्यक्तींचे नागरिकत्व.", p:"भाग II"},
-    9:{t:"कलम ९: परकीय नागरिकत्व स्वीकारल्यास", m:"भारतीय नागरिकत्व संपुष्टात.", p:"भाग II"},
-    10:{t:"कलम १०: नागरिकत्वाची सातत्यता", m:"कायद्यानुसार चालू राहते.", p:"भाग II"},
-    11:{t:"कलम ११: संसदेला अधिकार", m:"नागरिकत्वाबाबत कायदे करण्याचा.", p:"भाग II"},
-
-    12:{t:"कलम १२: ‘राज्य’ ची व्याख्या", m:"भाग III साठी राज्यात केंद्र/राज्य सरकार, संसद/विधानमंडळ, स्थानिक/इतर अधिकारांचा समावेश.", p:"भाग III"},
-    13:{t:"कलम १३: हक्कांविरुद्ध कायदे शून्य", m:"मूलभूत हक्कांशी विसंगत कायदे शून्य ठरतात.", p:"भाग III"},
-    14:{t:"कलम १४: कायद्यापुढे समानता", m:"कायद्यासमोर समानता व कायद्यांचे समान संरक्षण.", p:"भाग III"},
-    15:{t:"कलम १५: भेदभाव निषिद्ध", m:"धर्म, वंश, जात, लिंग, जन्मस्थानामुळे भेदभाव नाही.", p:"भाग III"},
-    16:{t:"कलम १६: रोजगारात समान संधी", m:"सार्वजनिक सेवेत समान संधी.", p:"भाग III"},
-    17:{t:"कलम १७: अस्पृश्यता निर्मूलन", m:"अस्पृश्यता व तिचा कोणताही प्रकार गुन्हा.", p:"भाग III"},
-    18:{t:"कलम १८: पदव्या रद्द", m:"लष्करी/शैक्षणिक वगळता कोणतीही पदवी नाही; परकीय पदव्या स्वीकारणे निषिद्ध.", p:"भाग III"},
-    19:{t:"कलम १९: स्वातंत्र्याचे हक्क", m:"अभिव्यक्ती, सभा, संघटना, मुक्त हालचाल, निवास, व्यवसाय.", p:"भाग III"},
-    20:{t:"कलम २०: फौजदारी संरक्षण", m:"पूर्वलक्ष्यी दंड नाही, दुहेरी शिक्षा नाही, स्वतःविरुद्ध साक्ष नाही.", p:"भाग III"},
-    21:{t:"कलम २१: जीवन व वैयक्तिक स्वातंत्र्य", m:"कायद्याने स्थापित प्रक्रियेशिवाय वंचित करता येणार नाही.", p:"भाग III"},
-    "21A":{t:"कलम २१क: शिक्षणाचा हक्क", m:"६–१४ वयोगटातील मुलांसाठी मोफत व सक्तीचे शिक्षण (राज्य कायद्याद्वारे).", p:"भाग III"},
-    22:{t:"कलम २२: अटक व अटकेतील संरक्षण", m:"अटक/कैदेसंबंधी हमी.", p:"भाग III"},
-    23:{t:"कलम २३: मानवी तस्करी/बेगार निषिद्ध", m:"शोषणाविरुद्ध संरक्षण.", p:"भाग III"},
-    24:{t:"कलम २४: बालमजुरी निषिद्ध", m:"कारखाने/धोकादायक व्यवसायात बालकामगार नाही.", p:"भाग III"},
-    25:{t:"कलम २५: धर्मस्वातंत्र्य", m:"मनःपूर्वक धर्म आचरण/प्रसाराचे स्वातंत्र्य.", p:"भाग III"},
-    26:{t:"कलम २६: धार्मिक व्यवहारांचे अधिकार", m:"धार्मिक संस्था स्थापन/व्यवस्थापन.", p:"भाग III"},
-    27:{t:"कलम २७: करमुक्ती (धर्मप्रचारासाठी) ", m:"विशिष्ट कर लादू नये.", p:"भाग III"},
-    28:{t:"कलम २८: धार्मिक शिक्षण", m:"काही शासकीय शिक्षणसंस्थांत धार्मिक अध्यापन निषिद्ध.", p:"भाग III"},
-    29:{t:"कलम २९: सांस्कृतिक/भाषिक समूहांचे संरक्षण", m:"अल्पसंख्याकांच्या हितांचे रक्षण.", p:"भाग III"},
-    30:{t:"कलम ३०: अल्पसंख्याक शैक्षणिक संस्थांचे हक्क", m:"स्थापना व व्यवस्थापन हक्क.", p:"भाग III"},
-    32:{t:"कलम ३२: घटनात्मक उपाय", m:"हक्कभंग झाल्यास सर्वोच्च न्यायालयाकडे रिट.", p:"भाग III"},
-
-    36:{t:"कलम ३६: भाग IV मधील 'राज्य'", m:"भाग III प्रमाणेच व्याख्या.", p:"भाग IV"},
-    37:{t:"कलम ३७: मार्गदर्शक तत्त्वे", m:"न्यायालयीन अंमलबजावणी नाही; शासनासाठी मूलभूत.", p:"भाग IV"},
-    38:{t:"कलम ३८: सामाजिक, आर्थिक, राजकीय न्याय", m:"कल्याणकारी राज्याचे उद्दिष्ट.", p:"भाग IV"},
-    39:{t:"कलम ३९: धोरणतत्त्वे (जीवनमान, समान वेतन, बालसंरक्षण)", m:"राज्याची दिशा.", p:"भाग IV"},
-    39A:{t:"कलम ३९क: विनामूल्य न्यायसहाय्य", m:"न्यायप्रवेश सुलभ.", p:"भाग IV"},
-    40:{t:"कलम ४०: ग्रामपंचायती", m:"स्थानिक स्वराज्य.", p:"भाग IV"},
-    41:{t:"कलम ४१: काम/शिक्षण/साहाय्याचा हक्क", m:"निर्धन, बेरोजगार, वृद्धांना सहाय्य.", p:"भाग IV"},
-    44:{t:"कलम ४४: समान नागरी संहिता", m:"नागरिकांसाठी राज्याचे प्रयत्न.", p:"भाग IV"},
-
-    51:{t:"कलम ५१: आंतरराष्ट्रीय शांतता", m:"आंतरराष्ट्रीय कायद्याचा आदर, पंचायतीचे प्रोत्साहन.", p:"भाग IV"},
-    "51A":{t:"कलम ५१क: मूलभूत कर्तव्ये", m:"११ कर्तव्ये—संविधान पालन, राष्ट्रध्वज/गीताचा सन्मान, पर्यावरणसंरक्षण, वैज्ञानिक मनोवृत्ती इ.", p:"भाग IVA"},
-
-    61:{t:"कलम ६१: राष्ट्रपती पदच्युती", m:"महाभियोग प्रक्रिया.", p:"भाग V"},
-    72:{t:"कलम ७२: राष्ट्रपती क्षमाधिकार", m:"क्षमादान, दंडशिथिलता इ.", p:"भाग V"},
-    73:{t:"कलम ७३: संघ कार्यकारी अधिकाराचा विस्तार", m:"यादीप्रमाणे.", p:"भाग V"},
-    74:{t:"कलम ७४: मंत्रिपरिषद व पंतप्रधान", m:"राष्ट्रपतींना सल्ला देणारी.", p:"भाग V"},
-    75:{t:"कलम ७५: मंत्र्यांची नेमणूक/पदमुक्ती", m:"लोकसभेचा विश्वास आवश्यक.", p:"भाग V"},
-    76:{t:"कलम ७६: महाधिवक्ता", m:"भारताचे अॅटर्नी जनरल.", p:"भाग V"},
-    79:{t:"कलम ७९: संसद", m:"राष्ट्रपती, लोकसभा, राज्यसभा.", p:"भाग V"},
-    80:{t:"कलम ८०: राज्यसभेची रचना", m:"राज्य/केंद्रशासित प्रदेशांमधून प्रतिनिधी.", p:"भाग V"},
-    81:{t:"कलम ८१: लोकसभेची रचना", m:"प्रत्यक्ष निवडून आलेले सदस्य.", p:"भाग V"},
-    85:{t:"कलम ८५: अधिवेशन बोलावणे/स्थगित करणे", m:"राष्ट्रपती.", p:"भाग V"},
-    93:{t:"कलम ९३: लोकसभाध्यक्ष/उपाध्यक्ष", m:"निवड.", p:"भाग V"},
-    100:{t:"कलम १००: मतदान व कार्यपद्धती", m:"साधे/विशेष बहुमत.", p:"भाग V"},
-    105:{t:"कलम १०५: संसद सदस्यांचे विशेषाधिकार", m:"स्वातंत्र्य, विशेषाधिकार.", p:"भाग V"},
-    108:{t:"कलम १०८: संयुक्त बैठक", m:"दोन्ही सभागृहांची संयुक्त बैठक.", p:"भाग V"},
-    110:{t:"कलम ११०: धन विधेयक", m:"मनी बिलची व्याख्या.", p:"भाग V"},
-    112:{t:"कलम ११२: वार्षिक अर्थसंकल्प", m:"केंद्रीय बजेट.", p:"भाग V"},
-    123:{t:"कलम १२३: अध्यादेश", m:"राष्ट्रपती अध्यादेश जारी करू शकतात.", p:"भाग V"},
-
-    124:{t:"कलम १२४: सर्वोच्च न्यायालय", m:"रचना व न्यायाधीशांची नेमणूक.", p:"भाग V"},
-    131:{t:"कलम १३१: मूळ अधिकारक्षेत्र", m:"संघ विरुद्ध राज्य वाद.", p:"भाग V"},
-    136:{t:"कलम १३६: विशेष परवानगी याचिका", m:"SLP.", p:"भाग V"},
-    137:{t:"कलम १३७: पुनर्विचार अधिकार", m:"SC स्वतःचा निर्णय पुनरावलोकन करू शकते.", p:"भाग V"},
-    141:{t:"कलम १४१: कायदा म्हणून नजीर", m:"SC चे निर्णय सर्व न्यायालयांवर बंधनकारक.", p:"भाग V"},
-    142:{t:"कलम १४२: संपूर्ण न्याय", m:"न्याय सुनिश्चित करण्यासाठी आदेश.", p:"भाग V"},
-
-    168:{t:"कलम १६८: राज्य विधानमंडळ", m:"राज्यपाल, विधानपरिषद/विधानसभा.", p:"भाग VI"},
-    170:{t:"कलम १७०: विधानसभा रचना", m:"सदस्यसंख्या.", p:"भाग VI"},
-    171:{t:"कलम १७१: विधानपरिषद रचना", m:"संघटन.", p:"भाग VI"},
-    200:{t:"कलम २००: राज्यपाल यांची संमती/परतावा", m:"विधेयकांबाबत अधिकार.", p:"भाग VI"},
-
-    243:{t:"कलम २४३: पंचायती", m:"भाग IX—त्रिस्तरीय पंचायती.", p:"भाग IX"},
-    "243A":{t:"कलम २४३A: ग्रामसभा", m:"ग्रामसभेचे अधिकार.", p:"भाग IX"},
-    "243B":{t:"कलम २४३B: पंचायत व्यवस्था", m:"ग्राम/पंचायत समिती/जिला परिषद.", p:"भाग IX"},
-    "243P":{t:"कलम २४३P: नगरपालिका व्याख्या", m:"भाग IXA—नगरपालिका.", p:"भाग IXA"},
-
-    249:{t:"कलम २४९: राज्यसूची विषयांवर संसद अधिकार", m:"राज्यसभेच्या ठरावाने.", p:"भाग XI"},
-    262:{t:"कलम २६२: आंतरराज्य नदी विवाद", m:"संसद कायदा करू शकते.", p:"भाग XI"},
-
-    265:{t:"कलम २६५: कर लावणी फक्त कायद्याने", m:"नो टॅक्स विथआऊट ऑथॉरिटी ऑफ लॉ.", p:"भाग XII"},
-    266:{t:"कलम २६६: एकत्रित निधी", m:"Consolidated Fund, Public Account.", p:"भाग XII"},
-    280:{t:"कलम २८०: वित्त आयोग", m:"राष्ट्रपती नियुक्त करतात.", p:"भाग XII"},
-
-    300A:{t:"कलम ३००क: संपत्तीचा हक्क", m:"कायद्याशिवाय संपत्तीचा अपहरण नाही.", p:"भाग XII"},
-
-    312:{t:"कलम ३१२: अखिल भारतीय सेवा", m:"संसद नवीन AIS निर्माण करू शकते.", p:"भाग XIV"},
-
-    324:{t:"कलम ३२४: निवडणूक आयोग", m:"सर्व निवडणुकांचे पर्यवेक्षण/दिशादर्शन.", p:"भाग XV"},
-
-    343:{t:"कलम ३४३: अधिकृत भाषा", m:"हिंदी (देवनागरी) + आंतरिम इंग्रजी.", p:"भाग XVII"},
-    350A:{t:"कलम ३५०क: प्राथमिक शिक्षण—मातृभाषा", m:"अल्पसंख्याक मुलांसाठी.", p:"भाग XVII"},
-    351:{t:"कलम ३५१: हिंदीचा विकास", m:"समृद्ध साहित्यिक अभिव्यक्ती.", p:"भाग XVII"},
-
-    352:{t:"कलम ३५२: राष्ट्रीय आणीबाणी", m:"युद्ध/बाह्य आक्रमण/सशस्त्र बंड.", p:"भाग XVIII"},
-    356:{t:"कलम ३५६: राज्यात राष्ट्रपती राजवट", m:"राज्य घटनात्मक यंत्रणा अपयशी.", p:"भाग XVIII"},
-    360:{t:"कलम ३६०: आर्थिक आणीबाणी", m:"(आजपर्यंत लागू नाही).", p:"भाग XVIII"},
-
-    368:{t:"कलम ३६८: घटनादुरुस्ती", m:"विशेष बहुमत; काहींसाठी राज्यांची संमती.", p:"भाग XX"},
-
-    370:{t:"कलम ३७०: (ऐतिहासिक) जम्मू-कश्मीर विशेष तरतुदी", m:"२०१९ मधील अध्यादेश/ठरावांनंतर प्रभावीपणे रद्दबातल व्यवस्थापन (ऐतिहासिक संदर्भ).", p:"भाग XXI"},
-    371:{t:"कलम ३७१: काही राज्यांसाठी विशेष तरतुदी", m:"३७१A ते ३७१J पर्यंत उपकलमे.", p:"भाग XXI"},
-
-    395:{t:"कलम ३९५: GOI Act, 1935 व Indian Independence Act, 1947 रद्द", m:"रद्दकलम.", p:"भाग XXII"},
-    448:{t:"कलम ४४८: विशेष तरतुदी (अनुच्छेदांसंदर्भात)", m:"नंतरच्या दुरुस्त्यांद्वारे समायोजित.", p:"भाग XXII"}
-  };
-
-  // Build an index for all 1..448 (including alphanumeric like 21A, 39A, 243A, 243B, 243P, 300A, 350A, 51A)
-  // Part range mapping for generic descriptions
-  const partRanges = [
-    {part:"भाग I: संघ व प्रदेश", from:1, to:4},
-    {part:"भाग II: नागरिकत्व", from:5, to:11},
-    {part:"भाग III: मूलभूत हक्क", from:12, to:35},
-    {part:"भाग IV: राज्य धोरणाची मार्गदर्शक तत्त्वे", from:36, to:51},
-    {part:"भाग IVA: मूलभूत कर्तव्ये", from:51, to:51}, // 51A handled separately
-    {part:"भाग V: संघ", from:52, to:151},
-    {part:"भाग VI: राज्ये", from:152, to:237},
-    {part:"भाग VII: (रद्द)", from:238, to:238},
-    {part:"भाग VIII: केंद्रशासित प्रदेश", from:239, to:242},
-    {part:"भाग IX: पंचायती", from:243, to:243},
-    {part:"भाग IXA: नगरपालिका", from:243, to:243},
-    {part:"भाग IXB: सहकारी संस्था", from:243, to:243},
-    {part:"भाग X: अनुसूचित/आदिवासी क्षेत्र", from:244, to:244},
-    {part:"भाग XI: संघ-राज्य संबंध", from:245, to:263},
-    {part:"भाग XII: वित्त, मालमत्ता, करार व दावे", from:264, to:300},
-    {part:"भाग XIII: व्यापार व वाणिज्य", from:301, to:307},
-    {part:"भाग XIV: सेवासंबंधी", from:308, to:323},
-    {part:"भाग XIVA: न्यायाधिकरण", from:323, to:323},
-    {part:"भाग XV: निवडणुका", from:324, to:329},
-    {part:"भाग XVI: विशेष तरतुदी", from:330, to:342},
-    {part:"भाग XVII: अधिकृत भाषा", from:343, to:351},
-    {part:"भाग XVIII: आणीबाणी तरतुदी", from:352, to:360},
-    {part:"भाग XIX: विविध", from:361, to:367},
-    {part:"भाग XX: घटनादुरुस्ती", from:368, to:368},
-    {part:"भाग XXI: तात्पुरत्या/संक्रमणकालीन/विशेष", from:369, to:392},
-    {part:"भाग XXII: लघुनाम, प्रारंभ व रद्द", from:393, to:395},
-    {part:"भाग XXII (विस्तारित): समारोप", from:396, to:448}
-  ];
-
-  function partOf(num){
-    for(const r of partRanges){ if(num>=r.from && num<=r.to) return r.part; }
-    return "भाग: माहिती";
-  }
-
-  // Helper: get article info (supports 21A, 39A, 51A, 243A/B/P, 300A, 350A)
-  function getArticleInfo(token){
-    const key = token; // may be string like "21A"
-    if(detailedArticles[key]) return detailedArticles[key];
-
-    // if numeric fallback
-    const n = parseInt(token, 10);
-    if(!isNaN(n) && n>=1 && n<=448){
-      return {
-        t:`कलम ${n}`,
-        m:`कलम ${n} भारतीय संविधानाचा भाग आहे. तपशीलासाठी अधिकृत मजकूर पहा.`,
-        p: partOf(n)
-      };
-    }
-    return null;
-  }
-
-  // Featured list in sidebar
-  const featuredList = [1,14,19,21,"21A",32,39,44,"51A",61,72,74,79,110,112,123,124,131,136,141,142,168,170,171,200,243,"243A","243B","243P",249,265,280,"300A",324,343,350,351,352,356,360,368,370,371,395,448];
-
-  // ------------------------------
-  // UI behaviour
-  // ------------------------------
-  const messages = document.getElementById('messages');
-  const input = document.getElementById('input');
-  const send = document.getElementById('send');
-  const clearBtn = document.getElementById('clearBtn');
-  const quickSearch = document.getElementById('quickSearch');
-  const featured = document.getElementById('featured');
-  const historyBtn = document.getElementById('historyBtn');
-
-  function addMessage(html, who='bot'){
-    const div = document.createElement('div');
-    div.className = `msg ${who==='user'?'user':'bot'}`;
-    div.innerHTML = html;
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-  }
-
-  function articleCard(info){
-    return `<div class="article"><div class="title">${info.t}</div><div>${info.m}</div><div class="part">${info.p}</div><div style="margin-top:8px"><button class="btn" onclick="toggleEnglish(this)"><i class='fa-regular fa-language'></i> English version</button><div class="en" style="display:none;margin-top:8px;font-size:14px;opacity:.9">${toEnglish(info)}</div></div></div>`;
-  }
-  function toggleEnglish(btn){ const en = btn.nextElementSibling; en.style.display = en.style.display==='none'?'block':'none'; }
-
-  // Minimal English mirror for curated ones
-  function toEnglish(info){
-    const map = {
-      1:"Article 1: India, that is Bharat, shall be a Union of States.",
-      14:"Article 14: Equality before law and equal protection of laws.",
-      19:"Article 19: Freedoms of speech, assembly, association, movement, residence and profession.",
-      21:"Article 21: Protection of life and personal liberty.",
-      32:"Article 32: Constitutional remedies (writs by Supreme Court).",
-      39:"Article 39: Directive Principles (livelihood, equal pay, protection of children).",
-      44:"Article 44: Uniform Civil Code.",
-      368:"Article 368: Amendment of the Constitution."
-    };
-    const k = Object.keys(detailedArticles).find(x=>detailedArticles[x].t===info.t);
-    if(map[k]) return map[k];
-    return "Refer to the official text for the precise English provision.";
-  }
-
-  function parseQuery(text){
-    // Normalize
-    const s = text.trim();
-    // Patterns: "कलम 14", "Article 21A", "article 243P"
-    const m = s.match(/(कलम|article)\s*([0-9]+[A-Za-z]?)/i);
-    if(m){ return m[2].toUpperCase(); }
-    return null;
-  }
-
-  function handleQuery(q){
-    // 1) Direct article request
-    const token = parseQuery(q);
-    if(token){
-      const info = getArticleInfo(token);
-      if(info){ addMessage(articleCard(info),'bot'); return; }
-      addMessage("कृपया १ ते ४४८ मधील वैध कलम क्रमांक द्या (उदा. 21A, 243P).", 'bot');
-      return;
-    }
-
-    // 2) Predefined Q&A
-    const key = Object.keys(qaPairs).find(k=> q.includes(k) || k.includes(q));
-    if(key){ addMessage(qaPairs[key],'bot'); return; }
-
-    // 3) Keywords
-    if(/प्रस्तावना|preamble/i.test(q)){
-      addMessage(`<div class="article"><div class="title">संविधानाची प्रस्तावना</div><div>आम्ही, भारताचे लोक, भारतास संप्रभु, समाजवादी, धर्मनिरपेक्ष, लोकशाही, प्रजासत्ताक बनवण्याचा... (संक्षिप्त). संपूर्ण मजकूरासाठी अधिकृत स्रोत पहा.</div></div>`,'bot');
-      return;
-    }
-
-    // 4) Fallback
-    addMessage("क्षमस्व, हा प्रश्न ओळखू शकलो नाही. 'कलम 14' किंवा 'Article 21A' अशा स्वरूपात विचारा, किंवा 'संविधानाचा इतिहास' बटण वापरा.",'bot');
-  }
-
-  // Populate featured list
-  featuredList.forEach(k=>{
-    const b = document.createElement('button');
-    b.className='qbtn';
-    b.textContent = typeof k==='string'?`कलम ${k}`:`कलम ${k}`;
-    b.addEventListener('click',()=>{ handleQuery('कलम '+k); });
-    featured.appendChild(b);
-  });
-
-  // Sidebar quick search
-  quickSearch.addEventListener('keypress', e=>{ if(e.key==='Enter'){ handleQuery(quickSearch.value); quickSearch.value=''; }});
-
-  // Send message
-  send.addEventListener('click',()=>{
-    const v = input.value.trim(); if(!v) return;
-    addMessage(v,'user'); input.value='';
-    setTimeout(()=>handleQuery(v), 250);
-  });
-  input.addEventListener('keypress',e=>{ if(e.key==='Enter'){ send.click(); }});
-
-  // Clear
-  clearBtn.addEventListener('click',()=>{ messages.innerHTML=''; hello(); });
-
-  // History panel (constitution making)
-  historyBtn.addEventListener('click',()=>{
-    const html = `
-      <div class="article">
-        <div class="title">भारतीय संविधान कसे तयार झाले? (संक्षेप)</div>
-        <ul style="margin-left:18px">
-          <li>1946: कॅबिनेट मिशन योजनेनुसार <b>संविधान सभा</b> स्थापन.</li>
-          <li>डॉ. बाबासाहेब आंबेडकर — मसुदा समितीचे अध्यक्ष (Drafting Committee).</li>
-          <li>२ वर्षे ११ महिने १८ दिवस चर्चा/मसुदा/दुरुस्त्या.</li>
-          <li>26 नोव्हेंबर 1949: संविधान <b>स्वीकारले</b>.</li>
-          <li>26 जानेवारी 1950: संविधान <b>लागू</b>; भारत <b>प्रजासत्ताक</b>.</li>
-          <li>मुळ रचना: 22 भाग, 395 कलमे, 8 अनुसूच्या; आज: 25 भाग, 448 कलमे, 12 अनुसूच्या.</li>
-        </ul>
-        <div style="margin-top:8px">टीप: येथे दिलेली माहिती शैक्षणिक संक्षेप आहे. अचूक शब्दांकनासाठी अधिकृत संविधान मजकूर बघा.</div>
-      </div>`;
-    addMessage(html,'bot');
-  });
-
-  function hello(){
-    addMessage(`<b>नमस्कार!</b> मी भारतीय संविधानासाठी AI सहाय्यक आहे. 
-      "कलम 14", "Article 21A", "प्रस्तावना" अशा प्रकारे विचारा. बाजूच्या सूचीतील प्रमुख कलमे क्लिक करा.`, 'bot');
-  }
-  hello();
-  </script>
+              tle: "कलम ३७०: जम्मू-काश्मीरसाठी विशेष तरतुदी",
+                        content: "या कलमानुसार, जम्मू-काश्मीर राज्याला विशेष स्वायत्तता देण्यात आली होती. हे कलम २०१९ मध्ये रद्द करण्यात आले.",
+                        part: "भाग XXI: तात्पुरत्या, संक्रमणकालीन आणि विशेष तरतुदी",
+                        english: "Article 370: Notwithstanding anything in this Constitution, the power of Parliament to make laws for the State of Jammu and Kashmir shall be limited to those matters in the Union List and the Concurrent List which, in consultation with the Government of the State, are declared by the President to correspond to matters specified in the Instrument of Accession."
+                    },
+                    395: {
+                        title: "कलम ३९५: भारत सरकार कायदा (१९३५) आणि भारतीय स्वातंत्र्य कायदा (१९४७) रद्द",
+                        content: "या कलमानुसार, भारत सरकार कायदा, १९३५ आणि भारतीय स्वातंत्र्य कायदा, १९४७ रद्द करण्यात आले.",
+                        part: "भाग XXII: लघुनाम, प्रारंभ आणि रद्दीकरण",
+                        english: "Article 395: The Government of India Act, 1935, and the Indian Independence Act, 1947, are hereby repealed."
+                    }
+                };
+                
+                // If article exists in our database
+                if (articles[articleNumber]) {
+                    return articles[articleNumber];
+                } 
+                // For other articles, generate a generic response
+                else if (articleNumber >= 1 && articleNumber <= 448) {
+                    // Determine which part the article belongs to
+                    let partInfo = "";
+                    if (articleNumber <= 4) partInfo = "भाग I: संघ आणि त्याचा प्रदेश";
+                    else if (articleNumber <= 11) partInfo = "भाग II: नागरिकत्व";
+                    else if (articleNumber <= 35) partInfo = "भाग III: मूलभूत हक्क";
+                    else if (articleNumber <= 51) partInfo = "भाग IV: राज्य धोरणाची मार्गदर्शक तत्त्वे";
+                    else if (articleNumber == 51) partInfo = "भाग IVA: मूलभूत कर्तव्ये";
+                    else if (articleNumber <= 151) partInfo = "भाग V: संघ";
+                    else if (articleNumber <= 237) partInfo = "भाग VI: राज्ये";
+                    else if (articleNumber <= 242) partInfo = "भाग VIII: केंद्रशासित प्रदेश";
+                    else if (articleNumber <= 243) partInfo = "भाग IX: पंचायती";
+                    else if (articleNumber <= 243) partInfo = "भाग IXA: नगरपालिका";
+                    else if (articleNumber <= 244) partInfo = "भाग X: अनुसूचित आणि आदिवासी क्षेत्र";
+                    else if (articleNumber <= 263) partInfo = "भाग XI: संघ आणि राज्ये यांच्यातील संबंध";
+                    else if (articleNumber <= 300) partInfo = "भाग XII: वित्त, मालमत्ता, करार आणि दावे";
+                    else if (articleNumber <= 307) partInfo = "भाग XIII: व्यापार, वाणिज्य आणि intercourses";
+                    else if (articleNumber <= 323) partInfo = "भाग XIV: संघ आणि राज्यांच्या अंतर्गत सेवा";
+                    else if (articleNumber <= 323) partInfo = "भाग XIVA: न्यायाधिकरण";
+                    else if (articleNumber <= 329) partInfo = "भाग XV: निवडणुका";
+                    else if (articleNumber <= 342) partInfo = "भाग XVI: विशेष तरतुदी";
+                    else if (articleNumber <= 351) partInfo = "भाग XVII: अधिकृत भाषा";
+                    else if (articleNumber <= 360) partInfo = "भाग XVIII: आणीबाणी तरतुदी";
+                    else if (articleNumber <= 367) partInfo = "भाग XIX: विविध";
+                    else if (articleNumber == 368) partInfo = "भाग XX: घटनादुरुस्ती";
+                    else if (articleNumber <= 392) partInfo = "भाग XXI: तात्पुरत्या, संक्रमणकालीन आणि विशेष तरतुदी";
+                    else if (articleNumber <= 395) partInfo = "भाग XXII: लघुनाम, प्रारंभ आणि रद्दीकरण";
+                    else partInfo = "अतिरिक्त कलमे";
+                    
+                    return {
+                        title: `कलम ${articleNumber}`,
+                        content: `कलम ${articleNumber} भारतीय संविधानाचा एक महत्त्वाचा भाग आहे. हे कलम विविध घटनात्मक तरतुदींशी संबंधित आहे. संपूर्ण माहितीसाठी, अधिकृत संविधानाचा संदर्भ घ्या.`,
+                        part: partInfo,
+                        english: `Article ${articleNumber} is an important part of the Indian Constitution. This article relates to various constitutional provisions. For complete information, please refer to the official constitution.`
+                    };
+                } else {
+                    return null;
+                }
+            }
+            
+            // Theme toggle functionality
+            themeToggle.addEventListener('click', function() {
+                body.classList.toggle('dark-mode');
+                
+                if (body.classList.contains('dark-mode')) {
+                    localStorage.setItem('darkMode', 'enabled');
+                    themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                } else {
+                    localStorage.setItem('darkMode', 'disabled');
+                    themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                }
+            });
+            
+            // Clear chat functionality
+            clearChatBtn.addEventListener('click', function() {
+                if (confirm('तुम्हाला खरोखर सर्व संवाद साफ करायचा आहे का?')) {
+                    chatMessages.innerHTML = '';
+                    addMessage('नमस्कार! मी भारतीय संविधानासाठी AI सहाय्यक आहे. तुम्हाला भारतीय संविधानाविषयी काय माहिती हवी आहे?', 'bot');
+                }
+            });
+            
+            // Suggest questions functionality
+            suggestQuestionsBtn.addEventListener('click', function() {
+                const questions = Object.keys(qaPairs);
+                const randomQuestions = [];
+                
+                // Get 3 random questions
+                while (randomQuestions.length < 3 && randomQuestions.length < questions.length) {
+                    const randomIndex = Math.floor(Math.random() * questions.length);
+                    const question = questions[randomIndex];
+                    
+                    if (!randomQuestions.includes(question)) {
+                        randomQuestions.push(question);
+                    }
+                }
+                
+                addMessage('कदाचित तुम्हाला यापैकी काही प्रश्न विचारायचे असतील:', 'bot');
+                
+                setTimeout(() => {
+                    randomQuestions.forEach((question, index) => {
+                        setTimeout(() => {
+                            addMessage(`${index + 1}. ${question}`, 'bot');
+                        }, (index + 1) * 500);
+                    });
+                }, 1000);
+            });
+            
+            // Add event listeners to question buttons
+            document.querySelectorAll('.question-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const question = this.getAttribute('data-question');
+                    userInput.value = question;
+                    sendMessage();
+                });
+            });
+            
+            // Send message on button click
+            sendBtn.addEventListener('click', sendMessage);
+            
+            // Send message on Enter key
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            function sendMessage() {
+                const message = userInput.value.trim();
+                if (message === '') return;
+                
+                // Add user message to chat
+                addMessage(message, 'user');
+                
+                // Clear input
+                userInput.value = '';
+                
+                // Show typing indicator
+                const typingIndicator = document.createElement('div');
+                typingIndicator.classList.add('typing-indicator');
+                typingIndicator.innerHTML = `
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                `;
+                chatMessages.appendChild(typingIndicator);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Generate bot response after a short delay
+                setTimeout(() => {
+                    // Remove typing indicator
+                    typingIndicator.remove();
+                    
+                    let response = "क्षमस्व, मला या प्रश्नाचे उत्तर देता येत नाही. कृपया संविधानाशी संबंधित दुसरा प्रश्न विचारा.";
+                    let showLanguageToggle = false;
+                    
+                    // Check for matching question in predefined Q&A
+                    for (const [q, a] of Object.entries(qaPairs)) {
+                        if (message.includes(q) || q.includes(message)) {
+                            response = a;
+                            break;
+                        }
+                    }
+                    
+                    // Check if user is asking about an article
+                    const articleMatch = message.match(/कलम\s*(\d+)|article\s*(\d+)/i);
+                    if (articleMatch) {
+                        const articleNumber = parseInt(articleMatch[1] || articleMatch[2]);
+                        if (articleNumber >= 1 && articleNumber <= 448) {
+                            const articleInfo = getArticleInfo(articleNumber);
+                            if (articleInfo) {
+                                response = `<div class="article-info">
+                                    <div class="article-title">${articleInfo.title}</div>
+                                    <div>${articleInfo.content}</div>
+                                    ${articleInfo.part ? `<div class="part-info"><span class="part-title">${articleInfo.part}</span></div>` : ''}
+                                    ${articleInfo.english ? `<button class="language-toggle" onclick="this.parentElement.querySelector('.english-content').style.display='block'; this.style.display='none';">English Version</button><div class="english-content" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #ccc;">${articleInfo.english}</div>` : ''}
+                                </div>`;
+                                showLanguageToggle = true;
+                            } else {
+                                response = `क्षमस्व, मला कलम ${articleNumber} बद्दल माहिती उपलब्ध नाही. कृपया १ ते ४४८ दरम्यानचे कलम क्रमांक विचारा.`;
+                            }
+                        } else {
+                            response = "कृपया १ ते ४४८ दरम्यानचा वैध कलम क्रमांक प्रविष्ट करा.";
+                        }
+                    }
+                    
+                    addMessage(response, 'bot');
+                }, 1500);
+            }
+            
+            function addMessage(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                messageDiv.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
+                messageDiv.classList.add('marathi-text');
+                
+                messageDiv.innerHTML = text;
+                
+                chatMessages.appendChild(messageDiv);
+                
+                // Scroll to bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        });
+    </script>
 </body>
 </html>
